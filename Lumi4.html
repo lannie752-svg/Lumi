@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lumi · Watch</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+body{
+  font-family:'Nunito',sans-serif;
+  background:#050505;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:28px 12px 40px;
+  user-select:none;
+}
+
+/* Hide dev pills by default (you can set .pills{display:flex} to debug) */
+.pills{display:none;gap:5px;flex-wrap:wrap;justify-content:center;max-width:360px;}
+.pill{
+  font-size:10px;font-weight:800;
+  padding:5px 11px;border-radius:100px;
+  border:1.5px solid #1e1e1e;background:#0e0e0e;color:#3a3a3a;
+  cursor:pointer;transition:all .2s;
+}
+.pill.on{background:rgba(255,210,100,.1);border-color:rgba(255,210,100,.38);color:#FFD264;}
+.pill:active{transform:scale(.93);}
+
+/* ── WATCH ── */
+.watch{position:relative;width:210px;height:252px;}
+.w-body{
+  position:absolute;inset:0;
+  background:linear-gradient(160deg,#242424,#141414);
+  border-radius:54px;
+  box-shadow:0 0 0 1.5px #2c2c2c,0 0 0 3.5px #0c0c0c,0 0 0 5px #1a1a1a,0 24px 60px rgba(0,0,0,.96),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.crown{position:absolute;right:-5px;top:68px;width:5px;height:32px;background:linear-gradient(180deg,#2e2e2e,#1e1e1e);border-radius:3px;}
+.crown::after{content:'';position:absolute;right:-3px;top:19px;width:3px;height:10px;background:#1c1c1c;border-radius:2px;}
+
+/* ── SCREEN ── */
+.screen{position:absolute;inset:11px;border-radius:44px;background:#070706;overflow:hidden;}
+
+.statusbar{
+  position:absolute;top:13px;left:0;right:0;
+  display:flex;justify-content:space-between;padding:0 20px;
+  font-size:8px;font-weight:800;color:rgba(255,255,255,.14);letter-spacing:.05em;z-index:10;
+}
+
+/* Persistent Lumi dock icon */
+.lumi-dock{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  width:28px;height:28px;
+  border-radius:10px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,210,100,.20);
+  display:flex;align-items:center;justify-content:center;
+  z-index:60;
+  cursor:pointer;
+  transition:transform .15s, background .15s, border-color .15s;
+}
+.lumi-dock:active{transform:scale(.9);background:rgba(255,210,100,.08);border-color:rgba(255,210,100,.35);}
+.lumi-dock svg{filter:drop-shadow(0 0 8px rgba(255,195,60,.35));}
+
+/* ── VIEWS ── */
+.view{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px 13px 18px;
+  opacity:0;pointer-events:none;transform:scale(.96);
+  transition:opacity .3s,transform .3s;
+  overflow:hidden;
+}
+.view.on{opacity:1;pointer-events:all;transform:scale(1);}
+
+/* Scroll container inside each view */
+.view .scroll{
+  width:100%;
+  height:100%;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:28px 13px 58px; /* extra bottom padding so dock icon never blocks text */
+  scrollbar-width:none;
+}
+.view .scroll::-webkit-scrollbar{width:0;height:0;}
+
+/* ── HOME WATCH FACE ── */
+.watchface{
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:34px 18px 18px;
+}
+.wf-time{
+  font-size:44px;
+  font-weight:900;
+  letter-spacing:-.02em;
+  color:rgba(255,255,255,.92);
+  line-height:1;
+}
+.wf-date{
+  font-size:12px;
+  font-weight:800;
+  color:rgba(255,255,255,.35);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.wf-sub{
+  margin-top:10px;
+  font-size:9px;
+  font-weight:800;
+  color:rgba(255,255,255,.14);
+}
+
+/* ── ORB ── */
+.orb-wrap{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:5px;}
+.orb-glow{position:absolute;border-radius:50%;animation:gp 3s ease-in-out infinite;}
+@keyframes gp{0%,100%{transform:scale(1);opacity:.7;}50%{transform:scale(1.32);opacity:1;}}
+.orb-svg{position:relative;z-index:2;cursor:pointer;animation:fl 3s ease-in-out infinite;transition:filter .4s;filter:drop-shadow(0 0 10px rgba(255,195,60,.65));}
+@keyframes fl{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+.orb-svg:active{transform:scale(.88);}
+.orb-svg.bop{animation:fl 3s ease-in-out infinite,pop .35s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{0%{transform:scale(1);}45%{transform:scale(1.22);}80%{transform:scale(.94);}100%{transform:scale(1);}}
+
+/* ── TEXT ── */
+.msg{font-size:13px;font-weight:900;color:#fff;text-align:center;line-height:1.28;margin-bottom:3px;}
+.hint{font-size:10px;font-weight:700;color:rgba(255,255,255,.28);text-align:center;line-height:1.4;margin-bottom:8px;}
+.subtle{font-size:9px;font-weight:700;color:rgba(255,255,255,.18);text-align:center;line-height:1.5;}
+
+/* ── BTNS ── */
+.row{display:flex;gap:6px;width:100%;justify-content:center;}
+.btn{
+  font-family:'Nunito',sans-serif;font-size:11.5px;font-weight:800;
+  padding:8px 0;border-radius:100px;border:none;cursor:pointer;
+  transition:transform .15s,opacity .15s;flex:1;max-width:92px;
+}
+.btn:active{transform:scale(.86);opacity:.75;}
+.btn-y{background:rgba(255,210,100,.18);color:#FFD264;border:1.5px solid rgba(255,210,100,.3);}
+.btn-n{background:rgba(255,255,255,.05);color:rgba(255,255,255,.3);border:1.5px solid rgba(255,255,255,.08);}
+.btn-g{background:rgba(48,209,88,.18);color:#30D158;border:1.5px solid rgba(48,209,88,.28);font-size:15px;padding:7px 0;}
+.btn-r{background:rgba(255,69,58,.15);color:#FF453A;border:1.5px solid rgba(255,69,58,.22);font-size:15px;padding:7px 0;}
+.btn-b{background:rgba(10,132,255,.18);color:#4DB8FF;border:1.5px solid rgba(10,132,255,.28);}
+.btn-p{background:rgba(191,90,242,.18);color:#BF5AF2;border:1.5px solid rgba(191,90,242,.28);}
+.btn-full{width:100%;max-width:none;font-size:11px;padding:8px;}
+
+/* ── MOOD ── */
+.moods{display:flex;gap:8px;margin-bottom:8px;}
+.mood{
+  width:33px;height:33px;border-radius:50%;
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;transition:all .2s;
+}
+.mood:active{transform:scale(.85);}
+.mood.sel{border-color:#FFD264;background:rgba(255,210,100,.15);transform:scale(1.12);}
+
+/* ── HRV ── */
+.hrv-bg{width:100%;height:6px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden;margin-bottom:8px;}
+.hrv-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#FF453A,#FF9F0A);animation:hrv 2.5s ease-in-out infinite alternate;}
+@keyframes hrv{from{width:66%;}to{width:80%;}}
+.hrv-lbl{width:100%;display:flex;justify-content:space-between;font-size:8.5px;font-weight:800;color:rgba(255,255,255,.2);margin-bottom:4px;}
+.hrv-lbl span:last-child{color:#FF6B6B;}
+
+/* ── BADGES ── */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  border-radius:100px;padding:3px 9px;
+  font-size:9px;font-weight:800;margin-bottom:7px;
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.badge-red{background:rgba(255,69,58,.13);border:1px solid rgba(255,69,58,.22);color:#FF6B6B;}
+.badge-blue{background:rgba(10,132,255,.14);border:1px solid rgba(10,132,255,.24);color:#4DB8FF;}
+.badge-green{background:rgba(48,209,88,.13);border:1px solid rgba(48,209,88,.22);color:#30D158;}
+.badge-purple{background:rgba(191,90,242,.13);border:1px solid rgba(191,90,242,.22);color:#BF5AF2;}
+.badge-lumi{background:rgba(255,210,100,.11);border:1px solid rgba(255,210,100,.22);color:#FFD264;}
+.badge-soft{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);}
+.blink{width:5px;height:5px;border-radius:50%;animation:pulse 1.1s ease-in-out infinite;}
+.blink-r{background:#FF453A;}
+.blink-b{background:#0A84FF;}
+.blink-g{background:#30D158;}
+.blink-p{background:#BF5AF2;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* ── CAFÉ ── */
+.cafe{
+  width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09);
+  border-radius:14px;padding:8px 11px;margin-bottom:7px;cursor:pointer;transition:all .18s;
+}
+.cafe:active{transform:scale(.96);background:rgba(255,210,100,.07);border-color:rgba(255,210,100,.3);}
+.cafe-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.cafe-name{font-size:12px;font-weight:800;color:#fff;}
+.cafe-walk{font-size:9px;font-weight:800;background:rgba(48,209,88,.15);color:#30D158;border:1px solid rgba(48,209,88,.22);border-radius:100px;padding:2px 7px;}
+.cafe-why{font-size:9px;font-weight:600;color:rgba(255,255,255,.28);}
+
+/* ── MINI MAP ── */
+.map{width:100%;height:44px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:11px;position:relative;overflow:hidden;margin-bottom:8px;}
+.mh{position:absolute;left:0;right:0;height:1px;top:50%;background:rgba(255,255,255,.04);}
+.mv{position:absolute;top:0;bottom:0;width:1px;left:50%;background:rgba(255,255,255,.04);}
+.you-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#0A84FF;border:1.5px solid #fff;left:22%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(10,132,255,.7);animation:yping 1.8s ease-in-out infinite;}
+@keyframes yping{0%,100%{box-shadow:0 0 8px rgba(10,132,255,.7);}50%{box-shadow:0 0 14px rgba(10,132,255,1);}}
+.dest-dot{position:absolute;width:8px;height:8px;border-radius:2px;background:#FFD264;left:70%;top:38%;transform:translate(-50%,-50%);box-shadow:0 0 7px rgba(255,210,100,.5);}
+.route-line{position:absolute;top:50%;left:22%;width:48%;height:2px;background:linear-gradient(90deg,#0A84FF,#FFD264);transform:translateY(-50%);border-radius:1px;animation:rpulse 1.5s ease-in-out infinite alternate;}
+@keyframes rpulse{from{opacity:.5;}to{opacity:1;}}
+
+/* FIX: rename map labels so they don't collide with Sync label */
+.maplbl{position:absolute;font-size:7px;font-weight:800;color:rgba(255,255,255,.25);}
+
+/* ── SUCCESS ── */
+.success{display:flex;flex-direction:column;align-items:center;gap:5px;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);text-align:center;}
+@keyframes popIn{from{transform:scale(.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+.success .big{font-size:28px;animation:fl 2s ease-in-out infinite;}
+.success .stxt{font-size:12px;font-weight:800;color:#fff;}
+.success .ssub{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.28);}
+
+/* ── SUGGESTION BOX ── */
+.sug{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:8px 10px;margin-bottom:8px;}
+.sug-a{font-size:11.5px;font-weight:800;color:#fff;margin-bottom:2px;}
+.sug-w{font-size:8.5px;font-weight:600;color:rgba(255,255,255,.25);}
+
+/* ── FRIEND CARD ── */
+.friend-card{
+  width:100%;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:9px 11px;margin-bottom:7px;cursor:pointer;transition:all .18s;
+}
+.friend-card:active{transform:scale(.96);border-color:rgba(191,90,242,.4);background:rgba(191,90,242,.06);}
+.friend-top{display:flex;align-items:center;gap:8px;}
+.friend-avatar{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  background:rgba(255,255,255,.07);flex-shrink:0;
+}
+.friend-info{flex:1;}
+.friend-name{font-size:11.5px;font-weight:800;color:#fff;margin-bottom:1px;}
+.friend-last{font-size:8.5px;font-weight:600;color:rgba(255,255,255,.28);}
+.friend-action{font-size:9px;font-weight:800;padding:3px 9px;border-radius:100px;}
+.f-call{background:rgba(48,209,88,.18);color:#30D158;border:1px solid rgba(48,209,88,.28);}
+.f-text{background:rgba(10,132,255,.18);color:#4DB8FF;border:1px solid rgba(10,132,255,.28);}
+
+/* ── QUOTE CARD ── */
+.quote-card{
+  width:100%;
+  background:linear-gradient(135deg,rgba(191,90,242,.1),rgba(10,132,255,.08));
+  border:1.5px solid rgba(191,90,242,.2);
+  border-radius:16px;padding:12px 13px;margin-bottom:8px;
+  position:relative;overflow:hidden;
+}
+.quote-card::before{
+  content:'"';
+  position:absolute;top:-4px;left:8px;
+  font-size:48px;font-weight:900;
+  color:rgba(191,90,242,.15);line-height:1;
+}
+.quote-text{font-size:11.5px;font-weight:700;color:rgba(255,255,255,.82);line-height:1.45;text-align:center;position:relative;z-index:1;}
+.quote-author{font-size:9px;font-weight:800;color:rgba(191,90,242,.6);text-align:center;margin-top:5px;}
+
+/* ── MEMORY CARD ── */
+.memory-card{
+  width:100%;
+  background:rgba(255,210,100,.06);
+  border:1.5px solid rgba(255,210,100,.15);
+  border-radius:16px;padding:10px 12px;margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;
+}
+.memory-photo{
+  width:38px;height:38px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  background:rgba(255,210,100,.12);border:1px solid rgba(255,210,100,.2);flex-shrink:0;
+}
+.memory-info{flex:1;}
+.memory-when{font-size:8.5px;font-weight:800;color:rgba(255,210,100,.6);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;}
+.memory-txt{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);line-height:1.3;}
+
+/* ── BREATHE RING ── */
+.breathe-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:8px;}
+.breathe-ring{
+  width:54px;height:54px;border-radius:50%;
+  border:2.5px solid rgba(48,209,88,.25);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;margin-bottom:6px;
+}
+.breathe-ring.going{animation:breatheRing 4s ease-in-out infinite;}
+@keyframes breatheRing{
+  0%,100%{border-color:rgba(48,209,88,.25);transform:scale(1);}
+  50%{border-color:rgba(48,209,88,.7);transform:scale(1.18);box-shadow:0 0 18px rgba(48,209,88,.3);}
+}
+.breathe-dot{
+  width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,rgba(48,209,88,.8),rgba(48,209,88,.3));
+  transition:transform .3s;
+}
+.breathe-ring.going .breathe-dot{animation:breatheDot 4s ease-in-out infinite;}
+@keyframes breatheDot{0%,100%{transform:scale(.7);}50%{transform:scale(1.2);}}
+.breathe-lbl{font-size:10px;font-weight:800;color:rgba(48,209,88,.6);letter-spacing:.04em;}
+
+/* ── NAV DOTS ── */
+.nav{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:20;}
+.nd{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.12);transition:all .25s;}
+.nd.on{background:#FFD264;width:10px;border-radius:2px;}
+
+/* ── FOCUS DIM ── */
+.focus-dim{opacity:.22;filter:brightness(.5);}
+
+/* ── PROACTIVE: vibration + toast ── */
+.vibe{animation:vibe .6s ease-in-out 2;}
+@keyframes vibe{
+  0%,100%{transform:translate(0,0);}
+  20%{transform:translate(-1.2px,0);}
+  40%{transform:translate(1.2px,0);}
+  60%{transform:translate(-1px,0);}
+  80%{transform:translate(1px,0);}
+}
+.toast{
+  position:absolute;
+  left:12px; right:12px; top:36px;
+  background:rgba(10,10,10,.85);
+  border:1px solid rgba(255,210,100,.22);
+  border-radius:14px;
+  padding:10px 10px;
+  z-index:50;
+  opacity:0;
+  transform:translateY(-6px);
+  transition:opacity .25s,transform .25s;
+}
+.toast.on{opacity:1; transform:translateY(0);}
+.toast-title{font-size:10.5px;font-weight:900;color:#FFD264;margin-bottom:2px;}
+.toast-sub{font-size:9px;font-weight:700;color:rgba(255,255,255,.55);line-height:1.25;}
+
+/* Expandable card */
+.expand{
+  width:100%;
+  background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  padding:10px 11px;
+  margin-bottom:9px;
+  cursor:pointer;
+  transition:all .18s;
+}
+.expand:active{transform:scale(.98);}
+.expand-top{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.expand-title{font-size:11px;font-weight:900;color:#fff;}
+.expand-more{font-size:9px;font-weight:800;color:rgba(255,255,255,.35);}
+.expand-body{max-height:0;overflow:hidden;transition:max-height .25s ease;}
+.expand.on .expand-body{max-height:260px;}
+.expand-text{
+  margin-top:8px;
+  font-size:9.5px;
+  font-weight:700;
+  color:rgba(255,255,255,.55);
+  line-height:1.45;
+}
+
+/* ── CHAT BUBBLES (Lumi) ── */
+.chat{width:100%;display:flex;flex-direction:column;gap:7px;margin:8px 0 10px;}
+.bub{max-width:92%;border-radius:14px;padding:8px 10px;font-size:10px;font-weight:800;line-height:1.35;}
+.bub.you{align-self:flex-end;background:rgba(10,132,255,.16);border:1px solid rgba(10,132,255,.22);color:rgba(255,255,255,.82);}
+.bub.lumi{align-self:flex-start;background:rgba(255,210,100,.10);border:1px solid rgba(255,210,100,.18);color:rgba(255,255,255,.82);}
+.typing{display:inline-flex;gap:3px;align-items:center;}
+.dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.35);animation:td 1.1s ease-in-out infinite;}
+.dot:nth-child(2){animation-delay:.12s;}
+.dot:nth-child(3){animation-delay:.24s;}
+@keyframes td{0%,100%{opacity:.2;transform:translateY(0);}50%{opacity:1;transform:translateY(-2px);}}
+
+/* Quick replies */
+.qr{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;margin-top:6px;}
+.q{
+  font-size:9px;font-weight:900;
+  padding:6px 10px;border-radius:999px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.55);
+  cursor:pointer;transition:transform .15s,opacity .15s, border-color .15s;
+}
+.q:active{transform:scale(.94);opacity:.8;}
+.q.sel{border-color:rgba(255,210,100,.35);color:#FFD264;background:rgba(255,210,100,.08);}
+
+/* mini "daily" cards */
+.daily-grid{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.daily{
+  width:100%;
+  background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  padding:9px 11px;
+  cursor:pointer;
+  transition:all .18s;
+}
+.daily:active{transform:scale(.98);border-color:rgba(255,210,100,.28);background:rgba(255,210,100,.06);}
+.daily-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.daily-t{font-size:11px;font-weight:900;color:#fff;}
+.daily-tag{font-size:9px;font-weight:900;border-radius:999px;padding:2px 8px;}
+.tag-y{background:rgba(255,210,100,.12);border:1px solid rgba(255,210,100,.18);color:#FFD264;}
+.tag-g{background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.18);color:#30D158;}
+.tag-p{background:rgba(191,90,242,.12);border:1px solid rgba(191,90,242,.18);color:#BF5AF2;}
+.daily-sub{font-size:9px;font-weight:700;color:rgba(255,255,255,.28);line-height:1.35;}
+
+/* personalization meter */
+.meter{width:100%;margin-top:8px;}
+.mbar{width:100%;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+.mfill{height:100%;width:42%;border-radius:999px;background:linear-gradient(90deg,#0A84FF,#FFD264);transition:width .35s ease;}
+/* IMPORTANT: keep this name for Sync label only */
+.sync-lbl{display:flex;justify-content:space-between;font-size:8.5px;font-weight:900;color:rgba(255,255,255,.2);margin-bottom:5px;}
+.sync-lbl span:last-child{color:rgba(255,210,100,.6);}
+</style>
+</head>
+
+<body>
+
+<!-- DEV PILLS (hidden by default) -->
+<div class="pills" id="pills">
+  <div class="pill" onclick="go(0)">⌚ Home</div>
+  <div class="pill" onclick="go(1)">🌙 Check-in</div>
+  <div class="pill" onclick="go(2)">❤️ Stressed</div>
+  <div class="pill" onclick="go(3)">☕ Café</div>
+  <div class="pill" onclick="go(4)">📸 Memory</div>
+  <div class="pill" onclick="go(5)">✨ Quote</div>
+  <div class="pill" onclick="go(6)">🫁 Breathe</div>
+  <div class="pill" onclick="go(7)">👥 Contacts</div>
+  <div class="pill" onclick="go(8)">💬 Talk to Lumi</div>
+  <div class="pill" onclick="go(9)">🔕 Focus</div>
+  <div class="pill" onclick="go(10)">✨ Daily</div>
+</div>
+
+<!-- WATCH -->
+<div class="watch">
+  <div class="w-body"></div>
+  <div class="crown"></div>
+
+  <div class="screen">
+    <div class="statusbar">
+      <span id="sbTime">9:41</span>
+      <span>●●●</span>
+    </div>
+
+    <!-- Proactive toast -->
+    <div class="toast" id="toast">
+      <div class="toast-title">Lumi</div>
+      <div class="toast-sub" id="toastSub">…</div>
+    </div>
+
+    <!-- Persistent Lumi Dock (bottom-left) -->
+    <div class="lumi-dock" id="lumiDock" onclick="openLumiFromDock()" aria-label="Open Lumi">
+      <!-- tiny Lumi icon -->
+      <svg width="18" height="18" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <radialGradient id="dockg" cx="42%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#FFF8D0"/>
+            <stop offset="52%" stop-color="#FFBE45"/>
+            <stop offset="100%" stop-color="#DF8400"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="50" cy="58" rx="34" ry="32" fill="url(#dockg)"/>
+        <ellipse cx="40" cy="55" rx="4" ry="5" fill="#3A1800"/>
+        <ellipse cx="60" cy="55" rx="4" ry="5" fill="#3A1800"/>
+        <path d="M42 68 Q50 75 58 68" stroke="#3A1800" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="25" r="6" fill="#FFBE45"/>
+        <line x1="50" y1="30" x2="50" y2="40" stroke="#FFBE45" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- SVG defs (shared gradients) -->
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <radialGradient id="lumig" cx="42%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="#FFF8D0"/>
+          <stop offset="52%" stop-color="#FFBE45"/>
+          <stop offset="100%" stop-color="#DF8400"/>
+        </radialGradient>
+        <radialGradient id="lumish" cx="32%" cy="24%" r="30%">
+          <stop offset="0%" stop-color="rgba(255,255,220,.55)"/>
+          <stop offset="100%" stop-color="rgba(255,255,220,0)"/>
+        </radialGradient>
+        <radialGradient id="lumig-dim" cx="42%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="#C8A030"/>
+          <stop offset="52%" stop-color="#9A7010"/>
+          <stop offset="100%" stop-color="#604800"/>
+        </radialGradient>
+        <radialGradient id="lumig-worry" cx="42%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="#FFF0C0"/>
+          <stop offset="52%" stop-color="#FFBE45"/>
+          <stop offset="100%" stop-color="#DF8400"/>
+        </radialGradient>
+      </defs>
+    </svg>
+
+    <!-- ═════════════════════════ V0: HOME WATCH FACE ═════════════════════════ -->
+    <div class="view on" id="v0">
+      <div class="watchface">
+        <div class="wf-time" id="wfTime">9:41</div>
+        <div class="wf-date" id="wfDate">THU · FEB 19</div>
+        <div class="wf-sub">Lumi lives here.</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V1: CHECK-IN ═════════════════════════ -->
+    <div class="view" id="v1">
+      <div class="scroll">
+        <div class="orb-wrap">
+          <div class="orb-glow" style="width:68px;height:68px;background:radial-gradient(circle,rgba(255,213,128,.3) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o1" width="64" height="64" viewBox="0 0 100 100" onclick="bop('o1')">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="41.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <ellipse cx="61.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="30" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+            <ellipse cx="70" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+          </svg>
+        </div>
+
+        <div class="badge badge-soft"><div class="blink blink-b"></div>Learning your vibe</div>
+        <div class="msg">You good?</div>
+        <div class="hint">Lumi noticed something + did a gentle tap.</div>
+
+        <div class="expand" onclick="toggleExpand(this)">
+          <div class="expand-top">
+            <div class="expand-title">What did it notice?</div>
+            <div class="expand-more">tap</div>
+          </div>
+          <div class="expand-body">
+            <div class="expand-text" id="noticedTxt">
+              • Tiny stress spike<br>
+              • Lots of sitting<br>
+              • You usually feel better after a short reset<br><br>
+              (It learns from your “yes/no” taps.)
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:6px">
+          <button class="btn btn-y" onclick="simulateStressSpike()">Simulate stress spike ✨</button>
+          <button class="btn btn-g" onclick="go(6)">Quick breathe</button>
+        </div>
+
+        <div class="hint" style="margin-top:8px;margin-bottom:6px">Or tell me in one tap:</div>
+        <div class="moods" id="moodRow">
+          <div class="mood" onclick="pickMood(this,0)">😔</div>
+          <div class="mood" onclick="pickMood(this,1)">😐</div>
+          <div class="mood" onclick="pickMood(this,2)">🙂</div>
+          <div class="mood" onclick="pickMood(this,3)">🤩</div>
+        </div>
+        <div id="moodThanks" style="display:none;font-size:11px;font-weight:800;color:rgba(255,210,100,.85);text-align:center">Okay 💛 I got you.</div>
+
+        <div class="subtle" style="margin-top:10px">
+          The more you talk / tap, the more Lumi talks like you.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V2: STRESSED ════════════════════════ -->
+    <div class="view" id="v2">
+      <div class="scroll">
+        <div class="orb-wrap">
+          <div class="orb-glow" style="width:66px;height:66px;background:radial-gradient(circle,rgba(255,100,80,.26) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o2" width="60" height="60" viewBox="0 0 100 100" onclick="bop('o2')">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig-worry)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="3.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="3.4" fill="#3A1800"/>
+            <path d="M37 47.5 Q40.5 44.5 44 46.5" stroke="#3A1800" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path d="M56 46.5 Q59.5 44.5 63 47.5" stroke="#3A1800" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path d="M42 65 Q50 62 58 65" stroke="#3A1800" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="30" cy="62" rx="5" ry="3" fill="rgba(255,100,60,.2)"/>
+            <ellipse cx="70" cy="62" rx="5" ry="3" fill="rgba(255,100,60,.2)"/>
+          </svg>
+        </div>
+        <div class="badge badge-red"><div class="blink blink-r"></div>Stress peek 👀</div>
+        <div class="hrv-lbl"><span>Right now</span><span>High</span></div>
+        <div class="hrv-bg"><div class="hrv-fill"></div></div>
+        <div class="msg" style="font-size:12px">Wanna reset?</div>
+        <div class="hint">Pick a tiny thing. No pressure.</div>
+
+        <div class="row" style="margin-bottom:6px">
+          <div class="btn btn-y" onclick="go(3)">Walk ☕</div>
+          <div class="btn btn-g" onclick="go(6)">Breathe 🫁</div>
+        </div>
+        <div class="row">
+          <div class="btn btn-p" onclick="go(8)">Talk to Lumi 💬</div>
+          <div class="btn btn-n" onclick="stressOk()">I’m fine</div>
+        </div>
+        <div id="stressOk" style="display:none;font-size:10px;font-weight:700;color:rgba(255,255,255,.25);text-align:center;margin-top:5px">Got it. I’ll chill.</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V3: CAFÉ ═══════════════════════════ -->
+    <div class="view" id="v3" style="justify-content:flex-start;padding-top:0">
+      <div class="scroll" style="padding-top:28px">
+        <div id="cafeDefault" style="width:100%;display:flex;flex-direction:column;align-items:center">
+          <div class="orb-wrap" style="margin-bottom:4px">
+            <div class="orb-glow" style="width:52px;height:52px;background:radial-gradient(circle,rgba(255,213,128,.26) 0%,transparent 70%)"></div>
+            <svg class="orb-svg" id="o3" width="48" height="48" viewBox="0 0 100 100" onclick="bop('o3')">
+              <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+              <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+              <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+              <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+              <ellipse cx="40" cy="53" rx="4.3" ry="5" fill="#3A1800"/>
+              <ellipse cx="60" cy="53" rx="4.3" ry="5" fill="#3A1800"/>
+              <ellipse cx="42" cy="51" rx="1.5" ry="1.5" fill="rgba(255,255,255,.75)"/>
+              <ellipse cx="62" cy="51" rx="1.5" ry="1.5" fill="rgba(255,255,255,.75)"/>
+              <path d="M40 64 Q50 73 60 64" stroke="#3A1800" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+              <ellipse cx="30" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.3)"/>
+              <ellipse cx="70" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.3)"/>
+            </svg>
+          </div>
+          <div class="msg" style="font-size:11.5px;margin-bottom:4px">Coffee walk?</div>
+          <div class="cafe" onclick="cafeYes()">
+            <div class="cafe-top"><div class="cafe-name">Toby's Estate Coffee</div><div class="cafe-walk">🚶 8 min</div></div>
+            <div class="cafe-why">You searched it before · quiet vibes</div>
+          </div>
+          <div class="map">
+            <div class="mh"></div><div class="mv"></div>
+            <div class="you-dot"></div><div class="dest-dot"></div><div class="route-line"></div>
+            <div class="maplbl" style="left:13%;bottom:4px">You</div>
+            <div class="maplbl" style="left:63%;top:3px">Café ☕</div>
+          </div>
+          <div class="row">
+            <div class="btn btn-y" onclick="cafeYes()">Let’s go ✨</div>
+            <div class="btn btn-n" onclick="cafeOther()">Other?</div>
+          </div>
+        </div>
+
+        <div id="cafeOthers" style="display:none;width:100%">
+          <div class="msg" style="font-size:11px;margin-bottom:7px">Nearby ☕</div>
+          <div class="cafe" onclick="cafeYes()" style="margin-bottom:5px">
+            <div class="cafe-top"><div class="cafe-name" style="font-size:11.5px">Everyday Coffee</div><div class="cafe-walk">🚶 11 min</div></div>
+            <div class="cafe-why">Cosy & calm · open now</div>
+          </div>
+          <div class="cafe" onclick="cafeYes()">
+            <div class="cafe-top"><div class="cafe-name" style="font-size:11.5px">Pablo & Rusty's</div><div class="cafe-walk">🚶 6 min</div></div>
+            <div class="cafe-why">Closest · good rating</div>
+          </div>
+        </div>
+
+        <div id="cafeGone" style="display:none;width:100%">
+          <div class="success">
+            <div class="big">🗺️</div>
+            <div class="stxt">Sent!</div>
+            <div class="ssub">Enjoy the walk 🌿</div>
+            <div class="btn btn-y btn-full" style="margin-top:8px" onclick="go(8)">Tell Lumi how it went 💬</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V4: MEMORY ══════════════════════════ -->
+    <div class="view" id="v4">
+      <div class="scroll">
+        <div class="orb-wrap" style="margin-bottom:4px">
+          <div class="orb-glow" style="width:56px;height:56px;background:radial-gradient(circle,rgba(255,213,128,.26) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o4" width="52" height="52" viewBox="0 0 100 100" onclick="bop('o4')">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="41.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <ellipse cx="61.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="30" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+            <ellipse cx="70" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+          </svg>
+        </div>
+        <div class="badge badge-lumi">📸 One year ago</div>
+        <div class="memory-card">
+          <div class="memory-photo">🏖️</div>
+          <div class="memory-info">
+            <div class="memory-when">Feb 19, 2024</div>
+            <div class="memory-txt">Bondi with Maya & Jake 🌊</div>
+          </div>
+        </div>
+        <div class="hint" style="margin-bottom:9px">You looked happy.</div>
+        <div class="row">
+          <div class="btn btn-y" onclick="memoryReact('love')">💛 Save</div>
+          <div class="btn btn-p" onclick="memoryReact('share')">Share</div>
+        </div>
+        <div id="memThanks" style="display:none;font-size:10.5px;font-weight:800;color:rgba(255,210,100,.8);text-align:center;margin-top:7px">Sent to your iPhone 📱</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V5: QUOTE ═══════════════════════════ -->
+    <div class="view" id="v5">
+      <div class="scroll">
+        <div class="orb-wrap" style="margin-bottom:5px">
+          <div class="orb-glow" style="width:56px;height:56px;background:radial-gradient(circle,rgba(191,90,242,.22) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o5" width="52" height="52" viewBox="0 0 100 100" onclick="bop('o5')" style="filter:drop-shadow(0 0 10px rgba(191,90,242,.5))">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <path d="M36.5 53 Q40 49.5 43.5 53" stroke="#3A1800" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+            <path d="M56.5 53 Q60 49.5 63.5 53" stroke="#3A1800" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="30" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+            <ellipse cx="70" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+          </svg>
+        </div>
+        <div class="badge badge-purple"><div class="blink blink-p"></div>For you</div>
+        <div class="quote-card" id="quoteCard">
+          <div class="quote-text" id="quoteTxt">You don't have to be positive all the time. It's okay to feel sad and still keep going.</div>
+          <div class="quote-author" id="quoteAuth">— Lumi</div>
+        </div>
+        <div class="row">
+          <div class="btn btn-p" onclick="nextQuote()">Another ✨</div>
+          <div class="btn btn-y" onclick="saveQuote()">Save 💛</div>
+        </div>
+        <div id="quoteSaved" style="display:none;font-size:10px;font-weight:800;color:rgba(255,210,100,.8);text-align:center;margin-top:6px">Saved 📱</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V6: BREATHE ═════════════════════════ -->
+    <div class="view" id="v6">
+      <div class="scroll">
+        <div class="orb-wrap" style="margin-bottom:4px">
+          <div class="orb-glow" style="width:56px;height:56px;background:radial-gradient(circle,rgba(48,209,88,.22) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o6" width="52" height="52" viewBox="0 0 100 100" onclick="bop('o6')" style="filter:drop-shadow(0 0 10px rgba(48,209,88,.4))">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="41.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <ellipse cx="61.5" cy="51.5" rx="1.3" ry="1.3" fill="rgba(255,255,255,.7)"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="30" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+            <ellipse cx="70" cy="62" rx="5" ry="3.5" fill="rgba(255,140,60,.28)"/>
+          </svg>
+        </div>
+        <div class="badge badge-green"><div class="blink blink-g"></div>Box breathe · 4-4-4-4</div>
+        <div class="breathe-wrap">
+          <div class="breathe-ring" id="breatheRing">
+            <div class="breathe-dot"></div>
+          </div>
+          <div class="breathe-lbl" id="breatheLbl">TAP TO START</div>
+        </div>
+        <div class="hint" style="margin-bottom:8px" id="breatheHint">In · Hold · Out · Hold</div>
+        <div class="row">
+          <div class="btn btn-g btn-full" id="breatheBtn" onclick="startBreathe()">Start 🌿</div>
+        </div>
+        <div id="breatheDone" style="display:none;font-size:11px;font-weight:800;color:rgba(48,209,88,.8);text-align:center;margin-top:6px">Nice 💚</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V7: CONTACTS ═══════════════════ -->
+    <div class="view" id="v7" style="justify-content:flex-start;padding-top:0">
+      <div class="scroll" style="padding-top:28px">
+        <div id="friendDefault" style="width:100%;display:flex;flex-direction:column;align-items:center">
+          <div class="msg" style="font-size:12px;margin-bottom:3px">Who do you want?</div>
+          <div class="hint" style="margin-bottom:9px">Or just hit Lumi.</div>
+
+          <div class="friend-card" onclick="contactLumi('call')">
+            <div class="friend-top">
+              <div class="friend-avatar">🌙</div>
+              <div class="friend-info">
+                <div class="friend-name">Lumi</div>
+                <div class="friend-last">Always here</div>
+              </div>
+              <div class="friend-action f-call">Call</div>
+            </div>
+          </div>
+          <div class="friend-card" onclick="contactLumi('text')">
+            <div class="friend-top">
+              <div class="friend-avatar">🌙</div>
+              <div class="friend-info">
+                <div class="friend-name">Lumi</div>
+                <div class="friend-last">Text me anything</div>
+              </div>
+              <div class="friend-action f-text">Text</div>
+            </div>
+          </div>
+
+          <div class="friend-card" onclick="contactFriend('Maya','call')">
+            <div class="friend-top">
+              <div class="friend-avatar">👩</div>
+              <div class="friend-info">
+                <div class="friend-name">Maya</div>
+                <div class="friend-last">Last talked 12 days ago</div>
+              </div>
+              <div class="friend-action f-call">Call</div>
+            </div>
+          </div>
+
+          <div class="friend-card" onclick="contactFriend('Jake','text')">
+            <div class="friend-top">
+              <div class="friend-avatar">👦</div>
+              <div class="friend-info">
+                <div class="friend-name">Jake</div>
+                <div class="friend-last">Last talked 6 days ago</div>
+              </div>
+              <div class="friend-action f-text">Text</div>
+            </div>
+          </div>
+
+          <div class="friend-card" onclick="contactFriend('Mum','call')">
+            <div class="friend-top">
+              <div class="friend-avatar">🧡</div>
+              <div class="friend-info">
+                <div class="friend-name">Mum</div>
+                <div class="friend-last">Last talked 3 days ago</div>
+              </div>
+              <div class="friend-action f-call">Call</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="friendDone" style="display:none;width:100%">
+          <div class="success">
+            <div class="big" id="friendEmoji">📞</div>
+            <div class="stxt" id="friendTxt">Calling…</div>
+            <div class="ssub" id="friendSub">Opened on your iPhone 📱</div>
+            <div class="hint" style="margin-top:6px;margin-bottom:0">You’re not doing this alone 💛</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V8: TALK TO LUMI ═══════════════════ -->
+    <div class="view" id="v8">
+      <div class="scroll">
+        <div class="orb-wrap" style="margin-bottom:4px">
+          <div class="orb-glow" style="width:60px;height:60px;background:radial-gradient(circle,rgba(255,213,128,.20) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o8" width="56" height="56" viewBox="0 0 100 100" onclick="bop('o8')">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div class="badge badge-lumi">💬 Talk to Lumi</div>
+        <div class="hint" style="margin-bottom:6px">Like texting a friend.</div>
+
+        <div class="meter">
+          <div class="sync-lbl"><span>Sync</span><span id="syncPct">42%</span></div>
+          <div class="mbar"><div class="mfill" id="syncFill"></div></div>
+        </div>
+
+        <div class="chat" id="chat">
+          <div class="bub lumi">Hey. I felt a little spike—are you okay?</div>
+          <div class="bub you" id="lastYou" style="display:none"></div>
+          <div class="bub lumi" id="typing" style="display:none"><span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        </div>
+
+        <div class="qr" id="qr">
+          <div class="q" onclick="sendQuick(event,'I’m stressed 😵‍💫')">I’m stressed 😵‍💫</div>
+          <div class="q" onclick="sendQuick(event,'Just tired')">Just tired</div>
+          <div class="q" onclick="sendQuick(event,'It was that meeting…')">That meeting…</div>
+          <div class="q" onclick="sendQuick(event,'I’m okay actually')">I’m okay</div>
+          <div class="q" onclick="sendQuick(event,'Can you distract me?')">Distract me</div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-p" onclick="lumiCall()">Call Lumi</button>
+          <button class="btn btn-b" onclick="lumiText()">Text Lumi</button>
+        </div>
+
+        <div class="subtle" style="margin-top:10px">
+          Every time you reply, Lumi learns your patterns.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V9: FOCUS ═══════════════════════════ -->
+    <div class="view" id="v9">
+      <div class="scroll">
+        <div class="orb-wrap">
+          <div class="orb-glow" style="width:66px;height:66px;background:radial-gradient(circle,rgba(255,213,128,.07) 0%,transparent 70%)"></div>
+          <svg class="orb-svg focus-dim" id="o9" width="62" height="62" viewBox="0 0 100 100" onclick="bop('o9')" style="animation:fl 4.5s ease-in-out infinite;">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig-dim)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#9A7010"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#9A7010" stroke-width="3" stroke-linecap="round"/>
+            <path d="M36 53 Q40 49 44 53" stroke="#3A1800" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            <path d="M56 53 Q60 49 64 53" stroke="#3A1800" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            <path d="M43 65 Q50 68 57 65" stroke="#3A1800" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="badge badge-blue"><div class="blink blink-b"></div>Focus mode</div>
+        <div class="msg" style="color:rgba(255,255,255,.35);font-size:13px">Quiet time.</div>
+        <div class="hint">Tap Lumi when you want it.</div>
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.12);text-align:center;line-height:1.8">No pings · No banners<br>No interruptions</div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════ V10: DAILY ═══════════════════════════ -->
+    <div class="view" id="v10">
+      <div class="scroll">
+        <div class="orb-wrap" style="margin-bottom:4px">
+          <div class="orb-glow" style="width:64px;height:64px;background:radial-gradient(circle,rgba(255,213,128,.18) 0%,transparent 70%)"></div>
+          <svg class="orb-svg" id="o10" width="60" height="60" viewBox="0 0 100 100" onclick="bop('o10')">
+            <ellipse cx="50" cy="56" rx="37" ry="35" fill="url(#lumig)"/>
+            <ellipse cx="36" cy="37" rx="17" ry="13" fill="url(#lumish)"/>
+            <circle cx="50" cy="21" r="4.5" fill="#FFBE45"/>
+            <line x1="50" y1="22" x2="50" y2="31" stroke="#FFBE45" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="40" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <ellipse cx="60" cy="53" rx="3.8" ry="4.4" fill="#3A1800"/>
+            <path d="M41 64 Q50 72 59 64" stroke="#3A1800" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div class="badge badge-soft">✨ Little daily stuff</div>
+        <div class="msg" style="font-size:12px">Quick picks for today</div>
+        <div class="hint">Tiny things. You can ignore me.</div>
+
+        <div class="daily-grid">
+          <div class="daily" onclick="dailyAction('water')">
+            <div class="daily-top">
+              <div class="daily-t">Drink water</div>
+              <div class="daily-tag tag-g">20s</div>
+            </div>
+            <div class="daily-sub">Your “stress days” usually start with… no water 😭</div>
+          </div>
+
+          <div class="daily" onclick="dailyAction('stretch')">
+            <div class="daily-top">
+              <div class="daily-t">Shoulder stretch</div>
+              <div class="daily-tag tag-y">1 min</div>
+            </div>
+            <div class="daily-sub">You’ve been in one position for a while.</div>
+          </div>
+
+          <div class="daily" onclick="dailyAction('sleep')">
+            <div class="daily-top">
+              <div class="daily-t">Sleep check</div>
+              <div class="daily-tag tag-p">2 taps</div>
+            </div>
+            <div class="daily-sub">If your sleep is off, I’ll be extra gentle tomorrow.</div>
+          </div>
+
+          <div class="daily" onclick="dailyAction('micro')">
+            <div class="daily-top">
+              <div class="daily-t">Micro-journal</div>
+              <div class="daily-tag tag-y">10s</div>
+            </div>
+            <div class="daily-sub">One line. No grammar. Just vibes.</div>
+          </div>
+        </div>
+
+        <div id="dailyDone" style="display:none;font-size:10.5px;font-weight:900;color:rgba(255,210,100,.75);text-align:center;margin-top:8px">
+          Noted ✨ I’ll remember that for next time.
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav dots -->
+    <div class="nav">
+      <div class="nd on" id="nd0"></div>
+      <div class="nd" id="nd1"></div>
+      <div class="nd" id="nd2"></div>
+      <div class="nd" id="nd3"></div>
+      <div class="nd" id="nd4"></div>
+      <div class="nd" id="nd5"></div>
+      <div class="nd" id="nd6"></div>
+      <div class="nd" id="nd7"></div>
+      <div class="nd" id="nd8"></div>
+      <div class="nd" id="nd9"></div>
+      <div class="nd" id="nd10"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const TOTAL = 11; // 0..10
+
+/* ── NAV ── */
+function go(i) {
+  for(let j=0;j<TOTAL;j++){
+    document.getElementById('v'+j)?.classList.toggle('on',j===i);
+    document.getElementById('nd'+j)?.classList.toggle('on',j===i);
+    document.querySelectorAll('.pill')[j]?.classList.toggle('on',j===i);
+  }
+  resetAll(i);
+}
+
+function resetAll(active){
+  // v1
+  const mt=document.getElementById('moodThanks');
+  if(mt) mt.style.display='none';
+  document.querySelectorAll('.mood').forEach(m=>m.classList.remove('sel'));
+
+  // v2
+  const so=document.getElementById('stressOk');
+  if(so) so.style.display='none';
+
+  // v3
+  const cd=document.getElementById('cafeDefault');
+  const co=document.getElementById('cafeOthers');
+  const cg=document.getElementById('cafeGone');
+  if(cd) cd.style.display='flex';
+  if(co) co.style.display='none';
+  if(cg) cg.style.display='none';
+
+  // v4
+  const mem=document.getElementById('memThanks');
+  if(mem) mem.style.display='none';
+
+  // v5
+  const qs=document.getElementById('quoteSaved');
+  if(qs) qs.style.display='none';
+  quoteIdx = 0; updateQuote();
+
+  // v6
+  stopBreathe();
+
+  // v7
+  const fd=document.getElementById('friendDefault');
+  const fdone=document.getElementById('friendDone');
+  if(fd) fd.style.display='flex';
+  if(fdone) fdone.style.display='none';
+
+  // v8
+  resetChatUI();
+
+  // v10
+  const dd=document.getElementById('dailyDone');
+  if(dd) dd.style.display='none';
+  document.querySelectorAll('.expand').forEach(e=>e.classList.remove('on'));
+
+  // scroll reset (only reset the view we are leaving? safest: reset all except active)
+  document.querySelectorAll('.view .scroll').forEach(s=>{
+    const parent = s.closest('.view');
+    if(parent && !parent.classList.contains('on')){
+      try{ s.scrollTop=0; }catch(e){}
+    }
+  });
+}
+
+/* ── Clock ── */
+function fmtTime(d){
+  return new Intl.DateTimeFormat(undefined, {hour:'numeric', minute:'2-digit'}).format(d);
+}
+function fmtDate(d){
+  const parts = new Intl.DateTimeFormat(undefined, {weekday:'short', month:'short', day:'numeric'}).formatToParts(d);
+  const get = t => (parts.find(p=>p.type===t)?.value || '').toUpperCase();
+  return `${get('weekday')} · ${get('month')} ${get('day')}`;
+}
+function tickClock(){
+  const now = new Date();
+  const t = fmtTime(now);
+  const d = fmtDate(now);
+  const sb = document.getElementById('sbTime');
+  const wfT = document.getElementById('wfTime');
+  const wfD = document.getElementById('wfDate');
+  if(sb) sb.textContent = t;
+  if(wfT) wfT.textContent = t;
+  if(wfD) wfD.textContent = d;
+}
+
+/* ── micro animation ── */
+function bop(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('bop'); void el.offsetWidth; el.classList.add('bop');
+  setTimeout(()=>el.classList.remove('bop'),500);
+}
+
+/* Expandable */
+function toggleExpand(card){ card.classList.toggle('on'); }
+
+/* ── MOOD ── */
+function pickMood(el,level){
+  document.querySelectorAll('.mood').forEach(m=>m.classList.remove('sel'));
+  el.classList.add('sel'); bop('o1');
+  setTimeout(()=>{
+    const mt=document.getElementById('moodThanks');
+    if(mt) mt.style.display='block';
+    if(level===0 || level===1) setTimeout(()=>go(2),900);
+    else setTimeout(()=>go(10),900);
+  },220);
+}
+
+/* ── STRESS ── */
+function stressOk(){
+  const so=document.getElementById('stressOk');
+  if(so) so.style.display='block';
+}
+
+/* ── CAFÉ ── */
+function cafeYes(){
+  const cd=document.getElementById('cafeDefault');
+  const co=document.getElementById('cafeOthers');
+  const cg=document.getElementById('cafeGone');
+  if(cd) cd.style.display='none';
+  if(co) co.style.display='none';
+  if(cg) cg.style.display='block';
+  bop('o3');
+}
+function cafeOther(){
+  const cd=document.getElementById('cafeDefault');
+  const co=document.getElementById('cafeOthers');
+  if(cd) cd.style.display='none';
+  if(co) co.style.display='block';
+}
+
+/* ── MEMORY ── */
+function memoryReact(type){
+  bop('o4');
+  const mem=document.getElementById('memThanks');
+  if(!mem) return;
+  mem.style.display='block';
+  mem.textContent = type==='share' ? 'Shared 📱' : 'Saved 💛';
+}
+
+/* ── QUOTES ── */
+const quotes=[
+  {t:"You don't have to be positive all the time. It's okay to feel sad and still keep going.",a:"— Lumi"},
+  {t:"Rest isn’t quitting. It’s recharging.",a:"— Lumi"},
+  {t:"If today is heavy, we go small.",a:"— Lumi"},
+  {t:"You can do hard things… later. Right now, breathe.",a:"— Lumi"},
+  {t:"Tiny wins still count.",a:"— Lumi"},
+];
+let quoteIdx=0;
+function updateQuote(){
+  const qt=document.getElementById('quoteTxt');
+  const qa=document.getElementById('quoteAuth');
+  if(qt) qt.textContent=quotes[quoteIdx].t;
+  if(qa) qa.textContent=quotes[quoteIdx].a;
+}
+function nextQuote(){
+  quoteIdx=(quoteIdx+1)%quotes.length;
+  const card=document.getElementById('quoteCard');
+  if(card){
+    card.style.opacity='0';card.style.transform='scale(.94)';
+    setTimeout(()=>{
+      updateQuote();
+      card.style.transition='all .3s';
+      card.style.opacity='1';
+      card.style.transform='scale(1)';
+    },200);
+  } else updateQuote();
+  bop('o5');
+  const qs=document.getElementById('quoteSaved');
+  if(qs) qs.style.display='none';
+}
+function saveQuote(){
+  bop('o5');
+  const qs=document.getElementById('quoteSaved');
+  if(qs) qs.style.display='block';
+}
+
+/* ── BREATHE ── */
+let breatheTimer=null,breathePhase=0,breatheCount=0;
+const phases=['Breathe in…','Hold…','Breathe out…','Hold…'];
+function startBreathe(){
+  if(breatheTimer) return;
+  const ring=document.getElementById('breatheRing');
+  const btn=document.getElementById('breatheBtn');
+  if(ring) ring.classList.add('going');
+  if(btn) btn.style.display='none';
+  breathePhase=0; breatheCount=0;
+  runBreath();
+}
+function runBreath(){
+  const lbl=document.getElementById('breatheLbl');
+  if(lbl) lbl.textContent=phases[breathePhase];
+  breatheTimer=setTimeout(()=>{
+    breathePhase=(breathePhase+1)%4;
+    if(breathePhase===0) breatheCount++;
+    if(breatheCount<3) runBreath();
+    else {
+      stopBreathe(false);
+      if(lbl) lbl.textContent='Done 💚';
+      const done=document.getElementById('breatheDone');
+      if(done) done.style.display='block';
+      setTimeout(()=>go(10),900);
+    }
+  },4000);
+}
+function stopBreathe(resetLabel=true){
+  clearTimeout(breatheTimer);breatheTimer=null;breathePhase=0;breatheCount=0;
+  const ring=document.getElementById('breatheRing');
+  const lbl=document.getElementById('breatheLbl');
+  const btn=document.getElementById('breatheBtn');
+  const done=document.getElementById('breatheDone');
+  if(ring) ring.classList.remove('going');
+  if(resetLabel && lbl) lbl.textContent='TAP TO START';
+  if(btn) btn.style.display='block';
+  if(done) done.style.display='none';
+}
+
+/* ── CONTACTS ── */
+function contactFriend(name,type){
+  const fd=document.getElementById('friendDefault');
+  const fdone=document.getElementById('friendDone');
+  if(fd) fd.style.display='none';
+  if(fdone) fdone.style.display='block';
+  const emoji=type==='call'?'📞':'💬';
+  const action=type==='call'?'Calling':'Texting';
+  document.getElementById('friendEmoji').textContent=emoji;
+  document.getElementById('friendTxt').textContent=action+' '+name+'…';
+  document.getElementById('friendSub').textContent='Opened on your iPhone 📱';
+}
+function contactLumi(type){
+  if(type==='call'){ lumiCall(); }
+  else { lumiText(); }
+}
+
+/* ── DAILY ── */
+function dailyAction(kind){
+  bop('o10');
+  const dd=document.getElementById('dailyDone');
+  if(dd) dd.style.display='block';
+  incSync(4 + Math.floor(Math.random()*4));
+  const msgMap={
+    water:"Okayyy hydrate moment 💧",
+    stretch:"Shoulders unlocked 🔓",
+    sleep:"Noted. I’ll be gentle tomorrow 😴",
+    micro:"Saved. One line is enough ✍️"
+  };
+  showToast(msgMap[kind] || "Noted ✨");
+}
+
+/* ── PROACTIVE: toast + vibration + auto flow ── */
+function showToast(text){
+  const t=document.getElementById('toast');
+  const sub=document.getElementById('toastSub');
+  if(sub) sub.textContent=text;
+  if(!t) return;
+  t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2200);
+}
+function vibeWatch(){
+  const w=document.querySelector('.watch');
+  if(!w) return;
+  w.classList.remove('vibe'); void w.offsetWidth; w.classList.add('vibe');
+  setTimeout(()=>w.classList.remove('vibe'),1400);
+
+  // Real vibration if device supports it:
+  try{
+    if(navigator.vibrate) navigator.vibrate([90,40,90]);
+  }catch(e){}
+}
+
+/* This is the “sensor hook” you’ll call when stress rises */
+function onStressSpike(level=1){
+  // level could be 1..5 later
+  showToast("tap tap — you okay? 🌿");
+  vibeWatch();
+  // go into your flow:
+  setTimeout(()=>go(2),850);
+}
+
+/* demo button */
+function simulateStressSpike(){ onStressSpike(3); }
+
+/* ── TALK TO LUMI: fake chat + learning ── */
+let sync=42;
+function setSync(v){
+  sync=Math.max(0,Math.min(100,v));
+  const pct=document.getElementById('syncPct');
+  const fill=document.getElementById('syncFill');
+  if(pct) pct.textContent=sync+'%';
+  if(fill) fill.style.width=sync+'%';
+}
+function incSync(add){ setSync(sync+add); }
+
+function resetChatUI(){
+  document.querySelectorAll('.q').forEach(q=>q.classList.remove('sel'));
+  const ly=document.getElementById('lastYou');
+  const ty=document.getElementById('typing');
+  if(ly){ ly.style.display='none'; ly.textContent=''; }
+  if(ty) ty.style.display='none';
+}
+
+function sendQuick(ev,text){
+  document.querySelectorAll('.q').forEach(q=>q.classList.remove('sel'));
+  try{ ev?.currentTarget?.classList?.add('sel'); }catch(e){}
+
+  const ly=document.getElementById('lastYou');
+  const ty=document.getElementById('typing');
+  if(ly){ ly.textContent=text; ly.style.display='block'; }
+  if(ty) ty.style.display='block';
+  incSync(6);
+
+  setTimeout(()=>{
+    if(ty) ty.style.display='none';
+    const chat=document.getElementById('chat');
+    if(!chat) return;
+
+    const r=document.createElement('div');
+    r.className='bub lumi';
+    r.textContent = lumiReply(text);
+    chat.appendChild(r);
+    bop('o8');
+
+    if(text.toLowerCase().includes('meeting')) setTimeout(()=>go(3),1000);
+    else if(text.toLowerCase().includes('stressed')) setTimeout(()=>go(6),900);
+  },800);
+}
+
+function lumiReply(text){
+  const t=text.toLowerCase();
+  if(t.includes('meeting')) return "Yeahhhh that’ll do it. Wanna do a tiny reset, then coffee walk?";
+  if(t.includes('stressed')) return "Okay, breathe with me for 1 minute. Then we’ll pick one small thing.";
+  if(t.includes('tired')) return "Tired makes everything louder. Want a 10-second check: sleep weird lately?";
+  if(t.includes('distract')) return "Deal. Quick game: name 3 things you can see right now 👀";
+  return "Okay. I’m here. Want breathe, walk, or just talk?";
+}
+
+function lumiCall(){
+  showToast("Calling Lumi… 🌙");
+  vibeWatch();
+  setTimeout(()=>go(8),650);
+  incSync(3);
+}
+function lumiText(){
+  showToast("Texting Lumi… 🌙");
+  setTimeout(()=>go(8),450);
+  incSync(2);
+}
+
+/* ── Dock behavior ── */
+function openLumiFromDock(){
+  // feels like: “tap the little creature living inside the watch”
+  showToast("Lumi: I’m here 🌙");
+  setTimeout(()=>go(1),350); // open check-in by default
+}
+
+/* ── STARTUP ── */
+setSync(sync);
+tickClock();
+setInterval(tickClock, 1000);
+
+window.addEventListener('load',()=>{
+  // Start on home watch face
+  go(0);
+
+  // OPTIONAL DEMO: simulate a stress spike after a few seconds.
+  // Comment out if you want it purely manual.
+  setTimeout(()=>onStressSpike(3), 4500);
+});
+</script>
+</body>
+</html>
